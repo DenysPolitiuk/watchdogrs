@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Arg::with_name("pid")
                 .index(1)
                 .required(true)
-                .help("pid to check"),
+                .help("pid or executable to check"),
         )
         .arg(
             Arg::with_name("children")
@@ -27,18 +27,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .help("print more information about the process"),
         )
         .get_matches();
-    let target_pid = matches
-        .value_of("pid")
-        .unwrap()
-        .parse::<u32>()
-        .expect("unable to parse pid value");
+    let target = matches.value_of("pid").unwrap();
+    let target_pid = target.parse::<u32>();
+
     let include_children = matches.is_present("children");
     let is_details = matches.is_present("details");
 
-    let rss = if include_children {
-        process_ram_usage_full(target_pid as i32, is_details).await?
-    } else {
-        process_ram_usage_single(target_pid as i32, is_details).await?
+    let rss = match target_pid {
+        Ok(target_pid) => {
+            if include_children {
+                process_ram_usage_full(target_pid as i32, is_details).await?
+            } else {
+                process_ram_usage_single(target_pid as i32, is_details).await?
+            }
+        }
+        Err(_) => 0,
     };
 
     println!("{} MB", rss);
