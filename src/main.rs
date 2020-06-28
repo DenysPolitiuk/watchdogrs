@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 process_ram_usage_single(target_pid as i32, is_details).await?
             }
         }
-        Err(_) => 0,
+        Err(_) => process_ram_usage_named(target, is_details).await?,
     };
 
     println!("{} MB", rss);
@@ -55,6 +55,7 @@ async fn process_ram_usage_single(pid: i32, print_details: bool) -> Result<u64, 
 
     if print_details {
         print_process_info(&process).await?;
+        println!("");
     }
 
     Ok(rss)
@@ -74,9 +75,44 @@ async fn process_ram_usage_full(pid: i32, print_details: bool) -> Result<u64, Bo
         for child in &children {
             rss += child.memory().await?.rss().get::<information::megabyte>();
             if print_details {
-                println!("");
                 print_process_info(&child).await?;
+                println!("");
             }
+        }
+    }
+
+    Ok(rss)
+}
+
+async fn process_ram_usage_named(name: &str, print_details: bool) -> Result<u64, Box<dyn Error>> {
+    let processes = get_all_processes().await?;
+    let self_process = process::current().await?.pid();
+
+    let mut results = vec![];
+
+    for (process, _) in processes {
+        let process_name = process.name().await?;
+        let process_command = process
+            .command()
+            .await?
+            .to_os_string()
+            .into_string()
+            .expect("unable to convert OsStrin to String");
+
+        if process_name.contains(name) || process_command.contains(name) {
+            if process.pid() == self_process {
+                continue;
+            }
+            results.push(process);
+        }
+    }
+
+    let mut rss = 0;
+    for process in results {
+        rss += process.memory().await?.rss().get::<information::megabyte>();
+        if print_details {
+            print_process_info(&process).await?;
+            println!("");
         }
     }
 
