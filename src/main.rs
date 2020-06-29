@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 process_ram_usage_single(target_pid as i32, is_details).await?
             }
         }
-        Err(_) => process_ram_usage_named(target, is_details).await?,
+        Err(_) => process_ram_usage_named(target, is_details, include_children).await?,
     };
 
     println!("{} MB", rss);
@@ -84,13 +84,17 @@ async fn process_ram_usage_full(pid: i32, print_details: bool) -> Result<u64, Bo
     Ok(rss)
 }
 
-async fn process_ram_usage_named(name: &str, print_details: bool) -> Result<u64, Box<dyn Error>> {
+async fn process_ram_usage_named(
+    name: &str,
+    print_details: bool,
+    include_children: bool,
+) -> Result<u64, Box<dyn Error>> {
     let processes = get_all_processes().await?;
     let self_process = process::current().await?.pid();
 
     let mut results = vec![];
 
-    for (process, _) in processes {
+    for (process, _) in &processes {
         let process_name = process.name().await?;
         let process_command = process
             .command()
@@ -107,8 +111,24 @@ async fn process_ram_usage_named(name: &str, print_details: bool) -> Result<u64,
         }
     }
 
+    let mut final_results: Vec<&Process> = vec![];
+
+    if include_children {
+        for process in &results {
+            final_results.push(process);
+            match get_all_children(&processes, process.pid()) {
+                None => (),
+                Some(mut children) => {
+                    final_results.append(&mut children);
+                }
+            }
+        }
+    } else {
+        final_results = results;
+    }
+
     let mut rss = 0;
-    for process in results {
+    for process in final_results {
         rss += process.memory().await?.rss().get::<information::megabyte>();
         if print_details {
             print_process_info(&process).await?;
@@ -166,7 +186,8 @@ fn get_children(processes: &Vec<(Process, i32)>, parent_pid: i32) -> Option<Vec<
 }
 
 async fn print_process_info(process: &Process) -> Result<(), Box<dyn Error>> {
-    println!("{:?}", process);
+    println!("PID {:?}", process.pid());
+    println!("Parent pid {:?}", process.parent_pid().await?);
     println!("Name {:?}", process.name().await?);
     println!("Exe {:?}", process.exe().await?);
     println!("Command {:?}", process.command().await?);
