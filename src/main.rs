@@ -87,16 +87,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let include_children = matches.is_present("children");
     let is_details = matches.is_present("details");
 
-    let rss = match target_pid {
-        Ok(target_pid) => {
-            process_ram_usage(target_pid as i32, is_details, include_children, unit_to_use).await?
+    println!(
+        "{}",
+        match target_pid {
+            Ok(target_pid) => {
+                process_ram_usage(target_pid as i32, is_details, include_children, unit_to_use)
+                    .await?
+            }
+            Err(_) => {
+                process_ram_usage_named(target, is_details, include_children, unit_to_use).await?
+            }
         }
-        Err(_) => {
-            process_ram_usage_named(target, is_details, include_children, unit_to_use).await?
-        }
-    };
-
-    println!("{}", rss);
+    );
 
     Ok(())
 }
