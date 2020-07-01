@@ -2,6 +2,7 @@ use clap::{App, Arg};
 use futures::StreamExt;
 use heim::{process, process::Process, units::information};
 
+use std::collections::HashMap;
 use std::error::Error;
 
 #[tokio::main]
@@ -92,7 +93,9 @@ async fn process_ram_usage_named(
     let processes = get_all_processes().await?;
     let self_process = process::current().await?.pid();
 
-    let mut results = vec![];
+    // need to use hashmaps because named search can find both a process and its children
+    // which creates "double" entries
+    let mut results = HashMap::new();
 
     for (process, _) in &processes {
         let process_name = process.name().await?;
@@ -107,19 +110,21 @@ async fn process_ram_usage_named(
             if process.pid() == self_process {
                 continue;
             }
-            results.push(process);
+            results.insert(process.pid(), process);
         }
     }
 
-    let mut final_results: Vec<&Process> = vec![];
+    let mut final_results: HashMap<i32, &Process> = HashMap::new();
 
     if include_children {
-        for process in &results {
-            final_results.push(process);
+        for (pid, process) in &results {
+            final_results.insert(*pid, process);
             match get_all_children(&processes, process.pid()) {
                 None => (),
-                Some(mut children) => {
-                    final_results.append(&mut children);
+                Some(children) => {
+                    for child in children {
+                        final_results.entry(child.pid()).or_insert(child);
+                    }
                 }
             }
         }
@@ -128,7 +133,7 @@ async fn process_ram_usage_named(
     }
 
     let mut rss = 0;
-    for process in final_results {
+    for process in final_results.values() {
         rss += process.memory().await?.rss().get::<information::megabyte>();
         if print_details {
             print_process_info(&process).await?;
