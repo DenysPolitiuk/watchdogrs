@@ -191,16 +191,17 @@ fn get_children(processes: &Vec<(Process, i32)>, parent_pid: i32) -> Option<Vec<
 }
 
 async fn print_process_info(process: &Process) -> Result<(), Box<dyn Error>> {
-    println!("PID {:?}", process.pid());
-    println!("Parent pid {:?}", process.parent_pid().await?);
-    println!("Name {:?}", process.name().await?);
-    println!("Exe {:?}", process.exe().await?);
-    println!("Command {:?}", process.command().await?);
+    println!("{:>10} {:?}", "PID", process.pid());
+    println!("{:>10} {:?}", "Parent pid", process.parent_pid().await?);
+    println!("{:>10} {:?}", "Name", process.name().await?);
+    println!("{:>10} {:?}", "Exe", process.exe().await?);
+    println!("{:>10} {:?}", "Command", process.command().await?);
     println!(
-        "RSS {:?} MB",
+        "{:>10} {:?} MB",
+        "RSS",
         process.memory().await?.rss().get::<information::megabyte>()
     );
-    println!("{:?}", process.status().await?);
+    println!("{:>10} {:?}", "Status", process.status().await?);
 
     Ok(())
 }
