@@ -297,7 +297,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1014732324a9baf5a691525faabb33909bf6f40dcc2b03c8f2fb07bb01e7e3f"
 dependencies = [
  "heim-common",
- "heim-memory",
  "heim-process",
  "heim-runtime",
 ]
@@ -355,21 +354,6 @@ dependencies = [
  "mach",
  "ntapi",
  "platforms",
- "winapi",
-]
-
-[[package]]
-name = "heim-memory"
-version = "0.1.0-beta.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edf21693fc5ebcae37997230b90876687bcf6e53d243af988a5a89215a3c2578"
-dependencies = [
- "cfg-if",
- "heim-common",
- "heim-runtime",
- "lazy_static",
- "libc",
- "mach",
  "winapi",
 ]
 
